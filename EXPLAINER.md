@@ -53,7 +53,7 @@ Paise are integers. Storing as integer eliminates any floating-point representat
 
 ## 2. The Lock
 
-### Exact code preventing concurrent overdrafts
+### Code preventing concurrent overdrafts
 
 ```python
 # payouts/services.py — create_payout()
@@ -174,7 +174,7 @@ with transaction.atomic():
 When I asked an AI assistant to write the balance calculation, it produced:
 
 ```python
-# ❌ AI-generated — WRONG
+# AI-generated — WRONG
 def get_balance(merchant_id):
     entries = LedgerEntry.objects.filter(merchant_id=merchant_id)
     balance = 0
@@ -197,7 +197,7 @@ def get_balance(merchant_id):
 **What I replaced it with:**
 
 ```python
-# ✅ Corrected — DB-level aggregation
+# Corrected — DB-level aggregation
 result = LedgerEntry.objects.filter(
     merchant_id=merchant_id
 ).aggregate(
@@ -212,11 +212,11 @@ This is a single SQL `SELECT SUM(...) FILTER (...)` — atomic, O(1) network rou
 The AI also initially placed the balance check *outside* the `select_for_update` block:
 
 ```python
-# ❌ AI-generated — race condition
+# AI-generated — race condition
 balance = get_balance(merchant_id)  # read here
 if balance >= amount:
     with transaction.atomic():
-        Merchant.objects.select_for_update().get(...)  # lock here (too late!)
+        Merchant.objects.select_for_update().get(...)  # lock here (too late)
         # balance might have changed between the check and the lock
 ```
 
