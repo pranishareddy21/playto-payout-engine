@@ -6,3 +6,4 @@ celery>=5.3
 redis>=4.6
 django-celery-results>=2.5
 python-dotenv>=1.0
+gunicorn
