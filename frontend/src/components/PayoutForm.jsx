@@ -36,7 +36,13 @@ export default function PayoutForm({ bankAccounts, availablePaise, onSuccess }) 
     const idempotencyKey = uuidv4();
 
     try {
-      const res = await createPayout({ amount_paise: paise, bank_account_id: bankAccountId }, idempotencyKey);
+      const res = await createPayout(
+  {
+    amount_paise: paise,
+    bank_account_id: Number(bankAccountId),
+  },
+  idempotencyKey
+);
       setResult({ type: 'success', data: res.data, key: idempotencyKey });
       setAmountRupees('');
       onSuccess?.();
