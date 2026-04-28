@@ -37,17 +37,17 @@ export default function PayoutForm({ bankAccounts, availablePaise, onSuccess }) 
 
     try {
       const res = await createPayout(
-  {
-    amount_paise: paise,
-    bank_account_id: Number(bankAccountId),
-  },
-  idempotencyKey
-);
+        {
+          amount_paise: paise,
+          bank_account_id: bankAccountId,  // UUID string — DO NOT convert to Number()
+        },
+        idempotencyKey
+      );
       setResult({ type: 'success', data: res.data, key: idempotencyKey });
       setAmountRupees('');
       onSuccess?.();
     } catch (err) {
-      const msg = err.response?.data?.error || 'Request failed';
+      const msg = err.response?.data?.error || err.response?.data?.detail || 'Request failed';
       setResult({ type: 'error', message: msg });
     } finally {
       setLoading(false);
@@ -112,7 +112,7 @@ export default function PayoutForm({ bankAccounts, availablePaise, onSuccess }) 
               <>
                 <p className="font-semibold mb-1">✓ Payout queued{result.data.duplicate ? ' (duplicate — idempotent)' : ''}</p>
                 <p className="text-xs opacity-70">ID: {result.data.id}</p>
-                <p className="text-xs opacity-70">Key: {result.key}</p>
+                <p className="text-xs opacity-70">Idempotency Key: {result.key}</p>
               </>
             ) : (
               <p>✗ {result.message}</p>
