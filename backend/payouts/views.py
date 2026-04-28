@@ -200,3 +200,50 @@ class DiagnosticView(APIView):
             results['config_error'] = str(e)
 
         return Response(results)
+
+
+class ProcessPendingPayoutsView(APIView):
+    """
+    POST /api/v1/process-payouts/
+    
+    Manually triggers payout processing synchronously.
+    Used when Celery worker is not available (e.g. Render free tier).
+    Simulates the same 70% success / 20% fail / 10% hang logic as the Celery task.
+    """
+    def post(self, request):
+        import random
+        from .services import process_payout_transition
+
+        pending = Payout.objects.filter(status=Payout.PENDING)
+        results = []
+
+        for payout in pending:
+            try:
+                # pending -> processing
+                process_payout_transition(str(payout.id), Payout.PROCESSING)
+
+                outcome = random.random()
+                if outcome < 0.70:
+                    process_payout_transition(str(payout.id), Payout.COMPLETED)
+                    results.append({'id': str(payout.id), 'result': 'completed'})
+                elif outcome < 0.90:
+                    reasons = [
+                        'Bank account not found',
+                        'IFSC validation failed',
+                        'Daily limit exceeded',
+                        'Beneficiary account frozen',
+                    ]
+                    reason = random.choice(reasons)
+                    process_payout_transition(str(payout.id), Payout.FAILED, failure_reason=reason)
+                    results.append({'id': str(payout.id), 'result': 'failed', 'reason': reason})
+                else:
+                    # stays in processing (simulates hang)
+                    results.append({'id': str(payout.id), 'result': 'processing (hung)'})
+
+            except Exception as e:
+                results.append({'id': str(payout.id), 'result': 'error', 'detail': str(e)})
+
+        return Response({
+            'processed': len(results),
+            'results': results
+        })
