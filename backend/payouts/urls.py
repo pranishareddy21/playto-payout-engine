@@ -9,4 +9,6 @@ urlpatterns = [
     path('bank-accounts/', views.BankAccountListView.as_view()),
     path('payouts/', views.PayoutListView.as_view()),
     path('payouts/<uuid:payout_id>/', views.PayoutDetailView.as_view()),
+    path('diagnostic/', views.DiagnosticView.as_view()),
+    path('process-payouts/', views.ProcessPendingPayoutsView.as_view()),
 ]
