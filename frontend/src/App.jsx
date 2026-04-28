@@ -127,6 +127,7 @@ export default function App() {
               </div>
               <div className="lg:col-span-2">
                 <PayoutForm
+                  key={selectedMerchantId}
                   bankAccounts={bankAccounts}
                   availablePaise={balance?.available_paise || 0}
                   onSuccess={fetchDashboard}
