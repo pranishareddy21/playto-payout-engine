@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { v4 as uuidv4 } from 'uuid';
-import { createPayout } from '../api';
+import { createPayout, processPendingPayouts } from '../api';
 
 function fmt(paise) {
   return (paise / 100).toLocaleString('en-IN', { style: 'currency', currency: 'INR' });
@@ -36,18 +36,30 @@ export default function PayoutForm({ bankAccounts, availablePaise, onSuccess }) 
     const idempotencyKey = uuidv4();
 
     try {
+      // Step 1: Create the payout
       const res = await createPayout(
-        {
-          amount_paise: paise,
-          bank_account_id: bankAccountId,  // UUID string — DO NOT convert to Number()
-        },
+        { amount_paise: paise, bank_account_id: bankAccountId },
         idempotencyKey
       );
+
       setResult({ type: 'success', data: res.data, key: idempotencyKey });
       setAmountRupees('');
-      onSuccess?.();
+
+      // Step 2: Trigger processing immediately (handles Celery being unavailable)
+      // Wait 800ms so the pending state is visible briefly, then process
+      setTimeout(async () => {
+        try {
+          await processPendingPayouts();
+        } catch (e) {
+          // Silent — Celery might handle it, or it stays pending
+        }
+        onSuccess?.();
+      }, 800);
+
     } catch (err) {
-      const msg = err.response?.data?.error || err.response?.data?.detail || 'Request failed';
+      const msg = err.response?.data?.error
+        || err.response?.data?.detail
+        || 'Request failed';
       setResult({ type: 'error', message: msg });
     } finally {
       setLoading(false);
@@ -110,7 +122,9 @@ export default function PayoutForm({ bankAccounts, availablePaise, onSuccess }) 
           }`}>
             {result.type === 'success' ? (
               <>
-                <p className="font-semibold mb-1">✓ Payout queued{result.data.duplicate ? ' (duplicate — idempotent)' : ''}</p>
+                <p className="font-semibold mb-1">
+                  ✓ Payout queued{result.data.duplicate ? ' (duplicate — idempotent)' : ''}
+                </p>
                 <p className="text-xs opacity-70">ID: {result.data.id}</p>
                 <p className="text-xs opacity-70">Idempotency Key: {result.key}</p>
               </>
